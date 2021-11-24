@@ -1,0 +1,5 @@
+---
+- name: restart infinispan
+  systemd:
+    name: "{{ infinispan.service.name }}" 
+    state: restarted  

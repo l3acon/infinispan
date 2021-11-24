@@ -1,0 +1,21 @@
+---
+- assert:
+    that:
+      - infinispan is defined
+      - infinispan.user is defined
+      - infinispan.user.name is defined
+      - infinispan.group is defined
+      - infinispan.group.name is defined
+      - infinispan_version is defined
+    quiet: true
+
+- name: Ensure required packages are installed
+  package:
+    name: "{{ infinispan.required_packages }}"
+    state: installed
+
+- name: enable and start the firewalld service
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started

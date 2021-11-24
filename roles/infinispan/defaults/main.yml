@@ -1,0 +1,37 @@
+---
+infinispan_version: "13.0.2.Final"
+infinispan_download_path: "/tmp/"
+infinispan_binary_source: "https://downloads.jboss.org/infinispan/{{ infinispan_version }}/infinispan-server-{{ infinispan_version }}.zip"
+infinispan_installation_path: "/opt/infinispan/"
+infinispan_log_path: "/var/log/infinispan"
+
+infinispan_healthcheck: yes
+
+#jdg_binary_source: "https://access.redhat.com/jbossnetwork/restricted/softwareDownload.html?softwareId=98151"
+#rhn_username: "{{ default(omit) }}"
+#rhn_password: "{{ default(omit) }}"
+
+infinispan:
+  home: "{{ infinispan_installation_path }}/infinispan-server-{{ infinispan_version }}"
+  bind_addr: "{{ infinispan_bind_addr | default('loopback') }}"
+  port: "{{ infinispan_port | default('11222') }}"
+  config:
+    name: "{{ infinispan_config | default('infinispan.xml') }}"
+    template: "{{ infinispan_config_template | default('templates/infinispan.xml.j2') }}"
+    users: "{{ infinispan_config_users_properties | default('users.properties') }}"
+    groups: "{{ infinispan_config_group_properties | default('groups.properties') }}"
+  user: 
+    name: "{{ infinispan_user | default('infinispan') }}"
+  group: 
+    name: "{{ infinispan_group | default('infinispan') }}"
+  service:
+    name: "{{ infinispan_service_name | default('infinispan') }}"
+
+  cache_api_path: "/rest/v2/caches"
+  caches:
+    - name: kitchensink_sql_cache
+  required_packages:
+    - zip
+    - unzip
+    - firewalld
+    - "{{ jvm_package | default('java-1.8.0-openjdk-devel') }}"

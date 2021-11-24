@@ -1,0 +1,65 @@
+---
+- name: Create infinispan group
+  group:
+    name: "{{ infinispan.group.name }}"
+    state: present
+    gid: "{{ infinispan.group.id | default(omit) }}"
+
+- name: Create infinispan user
+  user:
+    name: "{{ infinispan.user.name }}"
+    state: present
+    uid: "{{ infinispan.user.id | default(omit) }}"
+
+- name: Create install directory
+  file:
+    path: "{{ infinispan_installation_path }}"
+    state: directory
+
+- name: Create log directory
+  file:
+    path: "{{ infinispan_log_path }}"
+    state: directory
+    owner: "{{ infinispan.user.name }}"
+    group: "{{ infinispan.group.name }}"
+
+- name: Create download directory
+  file:
+    path: "{{ infinispan_download_path }}"
+    state: directory
+
+# need to figure out how to switch Version & Home vars based on if we're using
+# RHN or FOSS
+#- name: Download JBoss Core Services from CSP
+#  redhat_csp_download:
+#    url: "{ infinispan_binary_source }}"
+#    dest: "{{ infinispan_home }}"
+#    username: "{{ rhn_username }}"
+#    password: "{{ rhn_password }}"
+#  when:
+#    - rhn_username is defined
+#    - rhn_password is defined
+
+- name: Download infinispan from Jbos.org
+  get_url:
+    url: "{{ infinispan_binary_source }}"
+    dest: "{{ infinispan_download_path }}"
+    mode: '0440'
+  when:
+    - rhn_username is not defined
+    - rhn_password is not defined
+
+- name: Unarchive infinispan
+  unarchive:
+    src: "{{ infinispan_download_path }}/{{ infinispan_binary_source | basename }}"
+    remote_src: yes
+    dest: "{{ infinispan_installation_path }}"
+    creates: "{{ infinispan_installation_path }}/infinispan-server-{{ infinispan_version }}"
+
+- name: Fix file permissions
+  file:
+    path: "{{ infinispan.home }}"
+    owner: "{{ infinispan.user.name }}"
+    group: "{{ infinispan.group.name }}"
+    recurse: true
+

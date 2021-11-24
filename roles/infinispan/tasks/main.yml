@@ -1,0 +1,102 @@
+---
+- name:  calculate our hostname
+  set_fact:
+    infinispan_host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+  when:
+    - infinispan.bind_addr != "loopback"
+
+- name:  calculate our hostname
+  set_fact:
+    infinispan_host: "localhost"
+  when:
+    - infinispan.bind_addr == "loopback"
+
+- name: include prerequisite tasks
+  include_tasks: prereqs.yml
+
+- name: Do we need to install infinispan?
+  stat:
+    path: "{{ infinispan.home }}"
+  register: infinispan_home
+
+- include_tasks: install.yml
+  when: not infinispan_home.stat.exists
+
+- name: Is our service installed?
+  systemd:
+    name: infinispan
+  register: infinispan_systemd
+
+- name: "Configure systemd unit file for infinispan service"
+  template:
+    src: templates/infinispan.service.j2
+    dest: /etc/systemd/system/infinispan.service
+    owner: root
+    group: root
+    mode: 0644
+  register: infinispan_daemon_reload
+  notify:
+    - restart infinispan
+  when: infinispan_systemd.status.LoadState == "not-found"
+
+- name: "Ensures infinispan configuration is deployed: {{ infinispan.config.name }}"
+  template:
+    src: "{{ infinispan.config.template }}"
+    dest: "{{ infinispan.home }}/server/conf/{{ infinispan.config.name }}"
+    owner: "{{ infinispan.user.name }}"
+    group: "{{ infinispan.group.name }}"
+    mode: 0644
+  when:
+    - infinispan.config is defined
+    - infinispan.config.name is defined
+  notify:
+    - restart infinispan
+
+- include_tasks: infinispan_users.yml                                                      
+  when:                                                                            
+  - infinispan_users is defined                                                         
+  - infinispan_users | length > 0 
+
+- name: "Perform daemon-reload to ensure the changes on infinispan service are picked up"
+  systemd:
+    daemon_reload: true
+  when:
+    - infinispan_daemon_reload is defined
+    - infinispan_daemon_reload.changed
+
+- name: configure firewall ports
+  firewalld:
+    port: "{{ infinispan.port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+
+- name: Force all notified handlers to run at this point, not waiting for normal sync points
+  meta: flush_handlers
+
+- name: Ensures infinispan service is running
+  systemd:
+    name: infinispan
+    state: started
+    enabled: true
+
+- name: "Wait for all used ports to be open"
+  wait_for:
+    host: "{{ infinispan_host  }}"
+    port: "{{ infinispan.port }}"
+    delay: 0
+  when:
+    - infinispan_healthcheck is defined
+    - infinispan.port is defined
+
+#    # TODO: biuld out a cache
+#    # https://infinispan.org/docs/stable/titles/rest/rest.html#rest_v2_cache_operations
+#- name: Build caches
+#  uri:
+#    url: "http://{{infinispan_host }}:{{ infinispan.port }}/{{ infinispan.cache_api_path }}/{{ item.name }}"
+#    method: POST
+#    user: "{{ infinispan_users[0].name | default(omit) }}"
+#    password: "{{ infinispan_users[0].password | default(omit) }}"
+#    status_code: 200
+#  with_items: "{{ infinispan.caches }}"
+

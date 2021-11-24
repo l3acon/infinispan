@@ -1,0 +1,28 @@
+---
+- assert:
+    that:
+      - infinispan_users is defined
+      - infinispan_users | length > 0
+    quiet: true
+  
+- name: debug
+  debug:
+    msg: "infinispan.user.name: {{ infinispan.user.name }}\n infinispan.group.name: {{infinispan.group.name}}"
+
+- name: "Ensure {{ infinispan.config.users }} exists"
+  template:
+    src: templates/users.properties.j2
+    dest: "{{ infinispan.home }}/server/conf/{{ infinispan.config.users }}"
+    owner: "{{ infinispan.user.name }}"
+    group: "{{ infinispan.group.name }}"
+    mode: 0655
+  notify: restart infinispan
+
+- name: "Ensures {{ infinispan.config.groups }} exists"  
+  template:
+    src: templates/groups.properties.j2
+    dest: "{{ infinispan.home }}/server/conf/{{ infinispan.config.groups }}"
+    owner: "{{ infinispan.user.name }}"
+    group: "{{ infinispan.group.name }}"
+    mode: 0655
+  notify: restart infinispan

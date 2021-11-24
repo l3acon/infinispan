@@ -17,7 +17,7 @@ Have a `site.yml` that sets some variables.
   tasks:
     - name: include role
       include_role: 
-        name: l3acon.infinispan
+        name: l3acon.infinispan.infinispan
       vars:
         infinispan_bind_addr: site-local
         infinispan_users: 
